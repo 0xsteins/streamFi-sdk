@@ -923,6 +923,54 @@ export class SignatureTimeoutError extends Error {
   }
 }
 
+// ── Wallet adapter errors ─────────────────────────────────────────────────────
+
+/**
+ * Thrown when the user dismisses a wallet prompt (closes the popup or rejects
+ * the request) rather than the wallet failing. Apps can catch this to skip
+ * showing an error alert for a deliberate cancellation.
+ */
+export class UserCancelledError extends Error {
+  /** The wallet that reported the cancellation, e.g. `'albedo'`. */
+  readonly wallet: string;
+
+  constructor(wallet: string, message = `The ${wallet} request was cancelled by the user.`) {
+    super(message);
+    this.name = 'UserCancelledError';
+    this.wallet = wallet;
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
+/** {@link UserCancelledError} raised by the Albedo adapter when its popup is closed. */
+export class AlbedoCancelError extends UserCancelledError {
+  constructor(message?: string) {
+    super('albedo', message);
+    this.name = 'AlbedoCancelError';
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
+/**
+ * Thrown when the wallet's active network does not match the network the
+ * client is configured for (e.g. Freighter on Testnet, client on Mainnet).
+ */
+export class NetworkMismatchError extends Error {
+  readonly expectedPassphrase: string;
+  readonly walletPassphrase: string;
+
+  constructor(expectedPassphrase: string, walletPassphrase: string) {
+    super(
+      `Wallet network mismatch: the client expects "${expectedPassphrase}" ` +
+        `but the wallet is connected to "${walletPassphrase}". Switch networks in the wallet and retry.`,
+    );
+    this.name = 'NetworkMismatchError';
+    this.expectedPassphrase = expectedPassphrase;
+    this.walletPassphrase = walletPassphrase;
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
 // ── Type guard ────────────────────────────────────────────────────────────────
 
 /**
@@ -953,6 +1001,9 @@ export class SignatureTimeoutError extends Error {
  * - {@link CircuitOpenError}
  * - {@link ValidationError}
  * - {@link IndexerMaxPagesExceededError}
+ * - {@link UserCancelledError}
+ * - {@link AlbedoCancelError}
+ * - {@link NetworkMismatchError}
  */
 export function isConduitError(value: unknown): value is Error {
   if (!(value instanceof Error)) return false;
@@ -979,6 +1030,9 @@ export function isConduitError(value: unknown): value is Error {
     'CircuitOpenError',
     'ValidationError',
     'IndexerMaxPagesExceededError',
+    'UserCancelledError',
+    'AlbedoCancelError',
+    'NetworkMismatchError',
    ].includes(value.name);
 }
 
